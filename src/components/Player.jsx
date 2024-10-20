@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useEffect } from "react";
+import { usePlayerStore } from "@/store/playerStore";
+import { Slider } from "./Slider";
 export const Pause = ({ className }) => (
   <svg
     className={className}
@@ -34,7 +35,7 @@ export const VolumeSilence = () => (
     height="16"
     width="16"
     aria-hidden="true"
-    aria-label="Volumen apagado"
+    aria-label="Volume off"
     viewBox="0 0 16 16"
   >
     <path d="M13.86 5.47a.75.75 0 0 0-1.061 0l-1.47 1.47-1.47-1.47A.75.75 0 0 0 8.8 6.53L10.269 8l-1.47 1.47a.75.75 0 1 0 1.06 1.06l1.47-1.47 1.47 1.47a.75.75 0 0 0 1.06-1.06L12.39 8l1.47-1.47a.75.75 0 0 0 0-1.06z"></path>
@@ -49,7 +50,7 @@ export const Volume = () => (
     height="16"
     width="16"
     aria-hidden="true"
-    aria-label="Volumen alto"
+    aria-label="Volume on"
     id="volume-icon"
     viewBox="0 0 16 16"
   >
@@ -58,38 +59,158 @@ export const Volume = () => (
   </svg>
 );
 
+const CurrentSong = ({ image, title, artists }) => {
+  return (
+    <div
+      className={`
+      flex items-center gap-5 relative
+      overflow-hidden
+    `}
+    >
+      <picture className="w-16 h-16 bg-zinc-800  rounded-md shadow-lg overflow-hidden">
+        <img src={image} alt={title} />
+      </picture>
+      <div className="flex flex-col">
+        <h3 className="font-semibold text-sm block">{title}</h3>
+        <span className="text-xs opacity-80">{artists?.join(", ")}</span>
+      </div>
+    </div>
+  );
+};
+
+const SongControl = ({ audio }) => {
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    audio.current.addEventListener("timeupdate", handleTimeUpdate);
+    return () => {
+      audio.current.removeEventListener("timeupdate", handleTimeUpdate);
+    };
+  }, []);
+
+  const handleTimeUpdate = () => {
+    setCurrentTime(audio.current.currentTime);
+  };
+
+  const formatTime = time => {
+    if (time === null) return `0:00`
+
+    const seconds = Math.floor(time % 60)
+    const minutes = Math.floor(duration / 60)
+
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  const duration = audio?.current?.duration ?? 0;
+  
+  return (
+    <div className="flex gap-x-3 text-xs pt-2">
+      <span className="opacity-50">{formatTime(currentTime)}</span>
+
+      <Slider
+        value={[currentTime]}
+        max={audio?.current?.duration ?? 0}
+        min={0}
+        className="w-[400px]"
+        onValueChange={(value) => {
+          const [newCurrentTime] = value
+          audio.current.currentTime = newCurrentTime
+        }}
+      />
+
+
+      <span className="opacity-50">{formatTime(duration)}</span>
+    </div>
+  );
+};
+
+const VolumeControl = () => {
+  const volume = usePlayerStore((state) => state.volume);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const previousVolumeRef = useRef(volume);
+
+  const isVolumeSilence = volume < 0.1;
+
+  const handleClickVolumen = () => {
+    if (isVolumeSilence) {
+      setVolume(previousVolumeRef.current);
+    } else {
+      previousVolumeRef.current = volume;
+      setVolume(0);
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-x-2 text-white">
+      <button
+        className="opacity-70 hover:opacity-100 transition"
+        onClick={handleClickVolumen}
+      >
+        {volume < 0.1 ? <VolumeSilence /> : <Volume />}
+      </button>
+      <Slider
+        defaultValue={[100]}
+        max={100}
+        min={0}
+        className="w-[95px]"
+        value={[volume * 100]}
+        onValueChange={(value) => {
+          const [newVolume] = value;
+          const volumeValue = newVolume / 100;
+          setVolume(volumeValue);
+        }}
+      />
+    </div>
+  );
+};
+
 export function Player() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSong, setCurrentSong] = useState(null);
+  const { currentMusic, isPlaying, setIsPlaying, volume } = usePlayerStore(
+    (state) => state
+  );
   const audioRef = useRef();
 
   useEffect(() => {
-    audioRef.current.src = `/music/1/01.mp3`;
-  }, []);
-  const handleClick = () => {
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
+    isPlaying ? audioRef.current.play() : audioRef.current.pause();
+  }, [isPlaying]);
+
+  useEffect(() => {
+    audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    const { song, playlist, songs } = currentMusic;
+    if (song) {
+      const src = `/music/${playlist?.id}/0${song.id}.mp3`;
+      audioRef.current.src = src;
+      audioRef.current.volume = volume;
       audioRef.current.play();
-      audioRef.current.volumen = 0.1;
     }
+  }, [currentMusic]);
+
+  const handleClick = () => {
     setIsPlaying(!isPlaying);
   };
 
   return (
     <div className="flex flex-row justify-between w-full px-4 z-50">
-      <div>CurrentSong...</div>
+      <div>
+        <CurrentSong {...currentMusic.song} />
+      </div>
 
       <div className="grid place-content-center gap-4 flex-1">
         <div className="flex flex-col items-center justify-center">
           <button className="bg-white rounded-full p-2" onClick={handleClick}>
             {isPlaying ? <Pause /> : <Play />}
           </button>
+          <SongControl audio={audioRef} />
           <audio ref={audioRef} />
         </div>
       </div>
 
-      <div>Volumen</div>
+      <div className="grid place-content-center">
+        <VolumeControl />
+      </div>
     </div>
   );
 }
