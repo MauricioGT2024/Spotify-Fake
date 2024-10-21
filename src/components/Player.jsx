@@ -67,7 +67,7 @@ const CurrentSong = ({ image, title, artists }) => {
       overflow-hidden
     `}
     >
-      <picture className="w-16 h-16 bg-zinc-800  rounded-md shadow-lg overflow-hidden">
+      <picture className="w-16 h-16 bg-zinc-800 rounded-md shadow-lg overflow-hidden">
         <img src={image} alt={title} />
       </picture>
       <div className="flex flex-col">
@@ -96,7 +96,7 @@ const SongControl = ({ audio }) => {
     if (time === null) return `0:00`
 
     const seconds = Math.floor(time % 60)
-    const minutes = Math.floor(duration / 60)
+    const minutes = Math.floor(time / 60)
 
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
@@ -105,7 +105,7 @@ const SongControl = ({ audio }) => {
   
   return (
     <div className="flex gap-x-3 text-xs pt-2">
-      <span className="opacity-50">{formatTime(currentTime)}</span>
+      <span className="opacity-50 w-12">{formatTime(currentTime)}</span>
 
       <Slider
         value={[currentTime]}
@@ -119,7 +119,9 @@ const SongControl = ({ audio }) => {
       />
 
 
-      <span className="opacity-50">{formatTime(duration)}</span>
+      <span className="opacity-50 w-12">
+        {duration? formatTime(duration): null}
+        </span>
     </div>
   );
 };
@@ -193,8 +195,8 @@ export function Player() {
   };
 
   return (
-    <div className="flex flex-row justify-between w-full px-4 z-50">
-      <div>
+    <div className="flex flex-row justify-between w-full px-1 z-50">
+      <div className="w-[200px]">
         <CurrentSong {...currentMusic.song} />
       </div>
 

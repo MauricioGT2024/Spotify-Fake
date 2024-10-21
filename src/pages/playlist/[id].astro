@@ -3,6 +3,8 @@ import Layout from "../../layouts/Layout.astro";
 
 import PlayListItemCard from "../../components/PlaylistItemCard.astro";
 import { allPlaylists, songs } from "../../lib/data";
+import MusicTable from "@/components/MusicTable.astro";
+import { CardPlayButtom } from "@/components/CardPlayButtom";
 
 const { id } = Astro.params;
 
@@ -52,13 +54,20 @@ const playListSongs = songs.filter(
         </div>
       </div>
     </header>
+
+    <div class="pl-8 pt-6">
+      <CardPlayButtom client:load id={id} size="large"  />
+    </div>
+
     <div class="relative z-10 px-6 pt-10"></div>
 
     <div
       class="absolute inset-0 bg-gradient-to-t from-zinc-900 bg-zinc-900/80 -z-[1]"
     >
     </div>
-  </div>
 
-  <style></style>
+    <section class="p-6">
+      <MusicTable songs={playListSongs} />
+    </section>
+  </div>
 </Layout>
